@@ -1,11 +1,21 @@
 import { t } from "elysia";
 
 export const AuthModel = {
+  // Register
+  registerBody: t.Object({
+    username: t.String({ minLength: 3 }),
+    email: t.String({ format: "email" }),
+    password: t.String({ minLength: 8 }),
+    role: t.Optional(t.String()),
+  }),
+
+  // Login
   signInBody: t.Object({
     username: t.String(),
     password: t.String(),
   }),
 
+  // Token response
   tokenResponse: t.Object({
     accessToken: t.String(),
     refreshToken: t.String(),
@@ -13,10 +23,12 @@ export const AuthModel = {
     tokenType: t.Literal("Bearer"),
   }),
 
+  // Refresh
   refreshBody: t.Object({
     refreshToken: t.String(),
   }),
 
+  // Introspect
   introspectBody: t.Object({
     token: t.String(),
   }),
@@ -27,6 +39,12 @@ export const AuthModel = {
     username: t.Optional(t.String()),
     role: t.Optional(t.String()),
     exp: t.Optional(t.Number()),
+    type: t.Optional(t.String()),
+  }),
+
+  // Logout
+  logoutBody: t.Object({
+    refreshToken: t.Optional(t.String()),
   }),
 } satisfies Record<string, TSchema>;
 

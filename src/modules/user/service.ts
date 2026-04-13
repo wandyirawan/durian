@@ -61,4 +61,20 @@ export const UserService = {
     if (!user) throw new Error("User not found");
     return user;
   },
+  async getAll() {
+    return await db.select().from(users).where(eq(users.isActive, true));
+  },
+  async delete(id: string) {
+    // Hard delete atau soft delete? Kalau hard delete:
+    await db.delete(users).where(eq(users.id, id));
+    return { deleted: true };
+  },
+  async findByUsername(username: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    return user;
+  },
 };
