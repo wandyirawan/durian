@@ -25,10 +25,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-wal
+*.sqlite-shm
+
+# Drizzle ORM generated files
+drizzle/
 
 # vercel
 .vercel
