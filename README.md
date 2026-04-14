@@ -106,7 +106,7 @@ Durian auto-generates Swagger documentation. Once running, visit:
 http://localhost:3000/api/swagger
 ```
 
-### Major Endpoints
+### Authentication Endpoints
 
 | Endpoint | Method | Description | Auth |
 |----------|--------|-------------|------|
@@ -115,8 +115,35 @@ http://localhost:3000/api/swagger
 | `/auth/refresh` | POST | Get new access token | Public |
 | `/auth/logout` | POST | Revoke refresh token | Public |
 | `/auth/userinfo` | GET | Get current user info | Bearer |
-| `/users/me` | GET | Get profile | Bearer |
-| `/users/me` | PATCH | Update profile | Bearer |
+
+### User Management Endpoints
+
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `POST /users/` | POST | Create new user | Public |
+| `GET /users/:id` | GET | Get user by ID | Admin or own user |
+| `GET /users/` | GET | List all users | **Admin only** |
+| `DELETE /users/:id` | DELETE | Delete user | **Admin only** |
+| `GET /users/me` | GET | Get current profile | Bearer |
+| `PATCH /users/me` | PATCH | Update current profile | Bearer |
+| `DELETE /users/me` | DELETE | Deactivate account | Bearer |
+
+#### Access Control Matrix
+
+| Endpoint | Admin | User | Notes |
+|----------|-------|------|-------|
+| `POST /users/` | ✅ | ✅ | Public registration |
+| `GET /users/:id` | ✅ (any) | ✅ (own only) | Admin can view any user |
+| `GET /users/` | ✅ | ❌ | Admin only |
+| `DELETE /users/:id` | ✅ | ❌ | Admin only |
+| `GET /users/me` | ✅ | ✅ | Self profile |
+| `PATCH /users/me` | ✅ | ✅ | Self update |
+| `DELETE /users/me` | ✅ | ✅ | Self deactivate |
+
+### Health & Monitoring
+
+| Endpoint | Method | Description | Auth |
+|----------|--------|-------------|------|
 | `/health/live` | GET | Liveness probe | Public |
 | `/health/ready` | GET | Readiness probe + DB check | Public |
 | `/health/metrics` | GET | Runtime metrics | Public |
@@ -205,9 +232,9 @@ export const authModule = new Elysia({ prefix: "/auth" })
 - [ ] Request ID tracing
 - [ ] Input sanitization middleware
 
-### 📋 Milestone 3: Admin Features
-- [ ] List all users endpoint (admin)
-- [ ] Delete user endpoint (admin)
+### ✅ Milestone 3: Admin Features (Completed)
+- [x] List all users endpoint (admin only)
+- [x] Delete user endpoint (admin only)
 - [ ] Change user role endpoint (admin)
 - [ ] Admin dashboard (future)
 
