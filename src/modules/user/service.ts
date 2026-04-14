@@ -2,9 +2,20 @@ import { db, users } from "@/db";
 import { eq } from "drizzle-orm";
 import type { Static } from "elysia";
 import { UserModel } from "./model";
+import type { User } from "@/db/schema";
 
 type CreateBody = Static<typeof UserModel.createBody>;
 type UpdateBody = Static<typeof UserModel.updateBody>;
+
+// Helper: Map DB User to Response format (hide passwordHash, Date → string)
+const toUserResponse = (user: User) => ({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+  isActive: user.isActive,
+  createdAt: user.createdAt.toISOString(),
+});
 
 export const UserService = {
   async create(data: CreateBody) {
@@ -25,7 +36,14 @@ export const UserService = {
       })
       .returning();
 
-    return user;
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt.toISOString(),
+    };
   },
 
   async findById(id: string) {
@@ -35,7 +53,7 @@ export const UserService = {
       .where(eq(users.id, id))
       .limit(1);
     if (!user) throw new Error("User not found");
-    return user;
+    return toUserResponse(user);
   },
 
   async update(id: string, data: UpdateBody) {
@@ -49,7 +67,7 @@ export const UserService = {
       .where(eq(users.id, id))
       .returning();
     if (!user) throw new Error("User not found");
-    return user;
+    return toUserResponse(user);
   },
 
   async deactivate(id: string) {
@@ -59,10 +77,11 @@ export const UserService = {
       .where(eq(users.id, id))
       .returning();
     if (!user) throw new Error("User not found");
-    return user;
+    return toUserResponse(user);
   },
   async getAll() {
-    return await db.select().from(users).where(eq(users.isActive, true));
+    const userList = await db.select().from(users).where(eq(users.isActive, true));
+    return userList.map(toUserResponse);
   },
   async delete(id: string) {
     // Hard delete atau soft delete? Kalau hard delete:

@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { getPrivateKey, getJWKS } from "./keys";
 import { UserService } from "@/modules/user/service";
 import {
-  valkey,
   storeRefreshToken,
   getRefreshTokenUser,
   deleteRefreshToken,
@@ -19,7 +18,7 @@ const ISSUER = process.env.ISSUER || "https://auth.yourapp.com";
 export class AuthError extends Error {
   constructor(
     message: string,
-    public statusCode: number = 401
+    public statusCode: number = 401,
   ) {
     super(message);
     this.name = "AuthError";
@@ -103,7 +102,7 @@ export const AuthService = {
 
     const validPassword = await Bun.password.verify(
       body.password,
-      user.passwordHash
+      user.passwordHash,
     );
 
     if (!validPassword) {
@@ -189,7 +188,7 @@ export const AuthService = {
       const { payload } = await jwtVerify(
         refreshToken,
         createLocalJWKSet(jwks),
-        { issuer: ISSUER }
+        { issuer: ISSUER },
       );
 
       if (payload.type !== "refresh") {

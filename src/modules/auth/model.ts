@@ -1,4 +1,5 @@
 import { t } from "elysia";
+import type { TSchema } from "@sinclair/typebox";
 
 export const AuthModel = {
   // Register
