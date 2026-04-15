@@ -4,6 +4,17 @@ import { authGuard } from "./plugin";
 import { getJWKS } from "./keys";
 import { AuthModel } from "./model";
 
+// Helper untuk extract device info dari user-agent
+function getDeviceInfo(userAgent?: string): string | undefined {
+  if (!userAgent) return undefined;
+  // Simplified device detection - bisa expand lebih detail
+  if (userAgent.includes("Mobile")) return "Mobile Browser";
+  if (userAgent.includes("Chrome")) return "Chrome";
+  if (userAgent.includes("Firefox")) return "Firefox";
+  if (userAgent.includes("Safari")) return "Safari";
+  return "Browser";
+}
+
 export const authModule = new Elysia({ prefix: "/auth" })
   // JWKS endpoint (public)
   .get("/.well-known/jwks.json", async () => await getJWKS())
@@ -21,19 +32,31 @@ export const authModule = new Elysia({ prefix: "/auth" })
   }))
 
   // Register new user
-  .post("/register", async ({ body }) => AuthService.register(body), {
+  .post("/register", async ({ body, request, server }) => {
+    const userAgent = request.headers.get("user-agent") ?? undefined;
+    const ipAddress = server?.requestIP(request)?.address;
+    return AuthService.register(body, { userAgent, ipAddress });
+  }, {
     body: AuthModel.registerBody,
     response: AuthModel.tokenResponse,
   })
 
   // Login
-  .post("/login", async ({ body }) => AuthService.signIn(body), {
+  .post("/login", async ({ body, request, server }) => {
+    const userAgent = request.headers.get("user-agent") ?? undefined;
+    const ipAddress = server?.requestIP(request)?.address;
+    return AuthService.signIn(body, { userAgent, ipAddress });
+  }, {
     body: AuthModel.signInBody,
     response: AuthModel.tokenResponse,
   })
 
   // Refresh token
-  .post("/refresh", async ({ body }) => AuthService.refresh(body.refreshToken), {
+  .post("/refresh", async ({ body, request, server }) => {
+    const userAgent = request.headers.get("user-agent") ?? undefined;
+    const ipAddress = server?.requestIP(request)?.address;
+    return AuthService.refresh(body.refreshToken, { userAgent, ipAddress });
+  }, {
     body: AuthModel.refreshBody,
     response: AuthModel.tokenResponse,
   })

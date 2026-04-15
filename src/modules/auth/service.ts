@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify, createLocalJWKSet } from "jose";
-import { db, users } from "@/db";
+import { db, users, sessions } from "@/db";
 import { eq } from "drizzle-orm";
 import { getPrivateKey, getJWKS } from "./keys";
 import { UserService } from "@/modules/user/service";
@@ -11,6 +11,7 @@ import {
   isTokenRevoked,
   checkValkeyConnection,
 } from "@/db/valkey";
+import type { Session } from "@/db/schema";
 
 const ISSUER = process.env.ISSUER || "https://auth.yourapp.com";
 
@@ -49,16 +50,25 @@ async function initValkey(): Promise<void> {
 // Call init saat startup
 initValkey();
 
+// Type untuk session metadata
+type SessionMetadata = {
+  userAgent?: string;
+  ipAddress?: string;
+};
+
 export const AuthService = {
   /**
    * Register new user dan langsung login
    */
-  async register(body: {
-    username: string;
-    email: string;
-    password: string;
-    role?: string;
-  }) {
+  async register(
+    body: {
+      username: string;
+      email: string;
+      password: string;
+      role?: string;
+    },
+    meta?: SessionMetadata,
+  ) {
     // Check if username exists
     const existing = await db
       .select()
@@ -78,18 +88,24 @@ export const AuthService = {
     });
 
     // Generate tokens
-    return this.generateTokens({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-    });
+    return this.generateTokens(
+      {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+      meta,
+    );
   },
 
   /**
    * Login user
    */
-  async signIn(body: { username: string; password: string }) {
+  async signIn(
+    body: { username: string; password: string },
+    meta?: SessionMetadata,
+  ) {
     const [user] = await db
       .select()
       .from(users)
@@ -113,18 +129,21 @@ export const AuthService = {
       throw new AuthError("Account deactivated", 403);
     }
 
-    return this.generateTokens(user);
+    return this.generateTokens(user, meta);
   },
 
   /**
-   * Generate access & refresh tokens
+   * Generate access & refresh tokens with session tracking
    */
-  async generateTokens(user: {
-    id: string;
-    username: string;
-    email: string;
-    role: string;
-  }) {
+  async generateTokens(
+    user: {
+      id: string;
+      username: string;
+      email: string;
+      role: string;
+    },
+    meta?: SessionMetadata,
+  ) {
     const jwks = await getJWKS();
     const kid = jwks.keys[0]?.kid;
 
@@ -132,12 +151,19 @@ export const AuthService = {
       throw new AuthError("Invalid JWKS configuration", 500);
     }
 
+    // Generate unique JWT ID (jti) untuk session tracking
+    const jti = crypto.randomUUID();
+    const now = new Date();
+    const accessExpiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+    const refreshExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
     const accessToken = await new SignJWT({
       sub: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
       type: "access",
+      jti, // JWT ID untuk tracking
     })
       .setProtectedHeader({ alg: "RS256", kid })
       .setIssuedAt()
@@ -149,6 +175,7 @@ export const AuthService = {
     const refreshToken = await new SignJWT({
       sub: user.id,
       type: "refresh",
+      jti, // Same jti untuk associate access & refresh
     })
       .setProtectedHeader({ alg: "RS256", kid })
       .setExpirationTime("7d")
@@ -161,6 +188,16 @@ export const AuthService = {
       fallbackRefreshTokens.set(refreshToken, user.id);
     }
 
+    // Create session record in database untuk audit trail
+    await db.insert(sessions).values({
+      id: jti,
+      userId: user.id,
+      device: meta?.userAgent,
+      ipAddress: meta?.ipAddress,
+      createdAt: now,
+      expiresAt: refreshExpiresAt,
+    });
+
     return {
       accessToken,
       refreshToken,
@@ -172,7 +209,10 @@ export const AuthService = {
   /**
    * Refresh access token using refresh token
    */
-  async refresh(refreshToken: string) {
+  async refresh(
+    refreshToken: string,
+    meta?: SessionMetadata,
+  ) {
     // Check if token is revoked
     const isRevoked = useValkey
       ? await isTokenRevoked(refreshToken)
@@ -204,6 +244,14 @@ export const AuthService = {
         throw new AuthError("Token revoked or invalid");
       }
 
+      // Revoke old session in database (mark as revoked)
+      if (payload.jti) {
+        await db
+          .update(sessions)
+          .set({ revokedAt: new Date() })
+          .where(eq(sessions.id, payload.jti as string));
+      }
+
       // Delete old refresh token (rotate)
       if (useValkey) {
         await deleteRefreshToken(refreshToken);
@@ -222,8 +270,8 @@ export const AuthService = {
         throw new AuthError("User account is inactive");
       }
 
-      // Generate new tokens
-      return this.generateTokens(user);
+      // Generate new tokens with new session
+      return this.generateTokens(user, meta);
     } catch (error) {
       if (error instanceof AuthError) throw error;
       throw new AuthError("Invalid refresh token");
