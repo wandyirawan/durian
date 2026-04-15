@@ -16,5 +16,22 @@ export const users = sqliteTable("users", {
     .$defaultFn(() => new Date()),
 });
 
+// Sessions table for audit & tracking (even with Valkey cache)
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(), // JWT jti or session id
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  device: text("device"), // User agent info
+  ipAddress: text("ip_address"),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  revokedAt: integer("revoked_at", { mode: "timestamp" }), // Null if active
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;

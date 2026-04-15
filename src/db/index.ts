@@ -8,5 +8,5 @@ sqlite.exec("PRAGMA journal_mode = WAL;");
 export const db = drizzle(sqlite, { schema });
 
 // Re-export schema tables untuk import langsung
-export { users } from "./schema";
-export type { User, NewUser } from "./schema";
+export { users, sessions } from "./schema";
+export type { User, NewUser, Session, NewSession } from "./schema";
