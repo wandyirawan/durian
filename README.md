@@ -118,27 +118,46 @@ http://localhost:3000/api/swagger
 
 ### User Management Endpoints
 
+#### Public & Self-Service
+
 | Endpoint | Method | Description | Access |
 |----------|--------|-------------|--------|
 | `POST /users/` | POST | Create new user | Public |
-| `GET /users/:id` | GET | Get user by ID | Admin or own user |
-| `GET /users/` | GET | List all users | **Admin only** |
-| `DELETE /users/:id` | DELETE | Delete user | **Admin only** |
 | `GET /users/me` | GET | Get current profile | Bearer |
 | `PATCH /users/me` | PATCH | Update current profile | Bearer |
 | `DELETE /users/me` | DELETE | Deactivate account | Bearer |
+
+#### Admin Only
+
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `GET /users/` | GET | List all active users | **Admin** |
+| `GET /users/all` | GET | List all users (incl. inactive) | **Admin** |
+| `GET /users/:id` | GET | Get user by ID | **Admin** or own user |
+| `PATCH /users/:id` | PATCH | Full update any user | **Admin** |
+| `PUT /users/:id/role` | PUT | Update user role | **Admin** |
+| `POST /users/:id/activate` | POST | Reactivate user | **Admin** |
+| `DELETE /users/:id` | DELETE | Hard delete user | **Admin** |
+| `GET /users/:id/sessions` | GET | List user sessions (audit) | **Admin** |
+| `DELETE /users/:id/sessions` | DELETE | Force logout all devices | **Admin** |
 
 #### Access Control Matrix
 
 | Endpoint | Admin | User | Notes |
 |----------|-------|------|-------|
 | `POST /users/` | ✅ | ✅ | Public registration |
-| `GET /users/:id` | ✅ (any) | ✅ (own only) | Admin can view any user |
-| `GET /users/` | ✅ | ❌ | Admin only |
-| `DELETE /users/:id` | ✅ | ❌ | Admin only |
 | `GET /users/me` | ✅ | ✅ | Self profile |
 | `PATCH /users/me` | ✅ | ✅ | Self update |
 | `DELETE /users/me` | ✅ | ✅ | Self deactivate |
+| `GET /users/` | ✅ | ❌ | Admin: list active only |
+| `GET /users/all` | ✅ | ❌ | Admin: list all users |
+| `GET /users/:id` | ✅ (any) | ✅ (own only) | Admin can view any user |
+| `PATCH /users/:id` | ✅ | ❌ | Admin: full update incl. role |
+| `PUT /users/:id/role` | ✅ | ❌ | Admin: change role only |
+| `POST /users/:id/activate` | ✅ | ❌ | Admin: reactivate account |
+| `DELETE /users/:id` | ✅ | ❌ | Admin: hard delete |
+| `GET /users/:id/sessions` | ✅ | ❌ | Admin: session audit |
+| `DELETE /users/:id/sessions` | ✅ | ❌ | Admin: force logout user |
 
 ### Health & Monitoring
 
@@ -234,8 +253,14 @@ export const authModule = new Elysia({ prefix: "/auth" })
 
 ### ✅ Milestone 3: Admin Features (Completed)
 - [x] List all users endpoint (admin only)
+- [x] List all users including inactive (admin only)
 - [x] Delete user endpoint (admin only)
-- [ ] Change user role endpoint (admin)
+- [x] Update any user endpoint (admin only)
+- [x] Change user role endpoint (admin only)
+- [x] Reactivate user endpoint (admin only)
+- [x] Session audit endpoint (admin only)
+- [x] Force logout user endpoint (admin only)
+- [ ] Admin dashboard (future)
 - [ ] Admin dashboard (future)
 
 ### 📋 Milestone 4: User Features
